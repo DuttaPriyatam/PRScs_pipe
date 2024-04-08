@@ -7,6 +7,7 @@ The pipeline calculates the Polygenic Score (PGS) using PRS-CS(Ge et al., 2019).
 1. [Conda](https://conda.io/projects/conda/en/latest/user-guide/getting-started.html)
 2. [R](https://www.r-project.org/)
 3. [Plink](https://www.cog-genomics.org/plink/)
+4. [bgenix](https://enkre.net/cgi-bin/code/bgen/doc/trunk/doc/wiki/bgenix.md)
 
 *****Python Packages*****
 
