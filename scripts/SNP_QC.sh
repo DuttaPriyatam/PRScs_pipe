@@ -37,9 +37,16 @@ echo "Total SNPs: $(sed '1d' ${output}_base.vcf.tsv | wc -l)"
 
 # The file has already been filtered for high imputation quality(INFO >0.8), and MAF > 0.01.
 # MAF calculated using the following formula: (FCAS*NCAS)+(FCON*$NCON))/($NCON+$NCAS)
-#awk -F'\t' 'NR==1 || ($8 > 0.8 && $6 > 0.01 && $7 > 0.01) {print}' "$output"_base.vcf.tsv > "$output"_filtered.vcf.tsv
 awk -F'\t' 'NR==1 || ($8 > 0.8 && (($6*$12)+($7*$13))/($12+$13) > 0.01) {print}' "$output"_base.vcf.tsv > "$output"_filtered.vcf.tsv
 echo "SNPs after filtering for Imputation and MAF: $( sed '1d' ${output}_filtered.vcf.tsv | wc -l)"
+
+# # For non case control studies the MAF is calculated by the following
+# awk -F'\t' 'NR==1 || ($6*$10)/$10 > 0.01 {print}' "$output"_base.vcf.tsv > "$output"_filtered.vcf.tsv
+# echo "SNPs after filtering for Imputation and MAF: $( sed '1d' ${output}_filtered.vcf.tsv | wc -l)"
+
+# For GWAS where MAF/EAF is present in the statistics
+# awk -F'\t' 'NR==1 || 6 > 0.01 {print}' "$output"_base.vcf.tsv > "$output"_filtered.vcf.tsv
+# echo "SNPs after filtering for Imputation and MAF: $( sed '1d' ${output}_filtered.vcf.tsv | wc -l)"
 
 # Remove duplicates - The current file doesn't have any duplicate
 awk -F'\t' '{seen[$2]++; if(seen[$2]==1){ print}}' "$output"_filtered.vcf.tsv > "$output"_nodup.vcf.tsv
@@ -50,7 +57,7 @@ awk -F'\t' '!( ($4=="A" && $5=="T") || ($4=="T" && $5=="A") || ($4=="G" && $5=="
 echo "SNPs after correcting for ambiguous SNPs/Final variants after QC: $(sed '1d' ${output}_QC.vcf.tsv | wc -l)"
 
 # Updating the file for PRScs
-sed -i -e "s/CHROM/CHR/g" -e "s/POS/BP/g" -e "s/ID/SNP/g" "$output"_QC.vcf.tsv | cut -f2,4-5,9-10 > "$output"_for_PRScs.vcf.tsv
+sed -e "s/CHROM/CHR/g;s/POS/BP/g;s/ID/SNP/g" "$output"_QC.vcf.tsv | cut -f2,4-5,9-10 > "$output"_for_PRScs.vcf.tsv
 echo "${output}_for_PRScs.vcf.tsv created for PRScs calculation"
 
 # Removing intermediate files
@@ -63,6 +70,16 @@ echo "Intermediate files removed"
 # Extract rsids from the QCed sum stats and create the rsid list file
 sed '1d' "$output"_QC.vcf.tsv | cut -f2 > "$output"_rsid.txt
 echo "Base rsid extracted to ${output}_rsid.txt"
+
+# Changing Beta values to OR if OR values are not present in the base dataset
+read -a column_headers < "$output"_QC.vcf.tsv
+if [[ ${column_headers[@]} =~ "OR" ]]
+then
+	echo "OR value present in the summ stat file"
+else
+	# Calling R script to deal with the conversion
+	Rscript /home/pdutta/scratch/scripts/beta_to_or.r "$output"_QC.vcf.tsv
+fi
 
 # Creating a csv file for target QC
 sed -e "s/CHROM/CHR/g" -e "s/\t/,/g" "$output"_QC.vcf.tsv > "$output"_QC.csv

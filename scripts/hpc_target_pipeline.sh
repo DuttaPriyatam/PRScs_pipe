@@ -30,7 +30,7 @@ then
 fi
 
 # Extracting the base SNPs from target dataset
-for i in {20..22}
+for i in {1..22}
 do
 	bgenix -g "$imp_file_dir"ukb22828_c${i}_b0_v3.bgen -incl-rsids "$base""$phenotype"_rsid.txt > "$output"chr${i}.bgen 
 done
@@ -42,7 +42,7 @@ cat-bgen -g "$output"chr*.bgen -og "$output"initial_chr.bgen -clobber
 bgenix -g "$output"initial_chr.bgen -index -clobber
 
 # Removing individual bgen files
-for i in {20..22}
+for i in {1..22}
 do
 	rm "$output"chr${i}.bgen
 done
@@ -57,15 +57,15 @@ sqlite3 "$output"/initial_chr.bgen.bgi "DROP TABLE IF EXISTS Joined"
 # we can ensure only the relevant alleles from any multi-allelic SNPs are retained
 sqlite3 -header -csv $output/initial_chr.bgen.bgi \
 "CREATE TABLE Joined AS
- SELECT Variant.*, Betas.CHR, Betas.BETA FROM Variant INNER JOIN Betas
+ SELECT Variant.*, Betas.CHR FROM Variant INNER JOIN Betas
    ON Variant.chromosome = printf('%02d', Betas.CHR)
-   AND Variant.position = Betas.POS
+   AND Variant.position = Betas.BP
    AND Variant.allele1 = Betas.A2
    AND Variant.allele2 = Betas.A1
  UNION
- SELECT Variant.*, Betas.CHR, -Betas.BETA FROM Variant INNER JOIN Betas
+ SELECT Variant.*, Betas.CHR FROM Variant INNER JOIN Betas
    ON Variant.chromosome = printf('%02d', Betas.CHR)
-   AND Variant.position = Betas.POS
+   AND Variant.position = Betas.BP
    AND Variant.allele1 = Betas.A1 AND
    Variant.allele2 = Betas.A2;"
 
@@ -79,18 +79,18 @@ bgenix -g "$output"single_allelic.bgen -index
 plink2 \
 	--bgen "$output"single_allelic.bgen ref-first \
  	--sample "$imp_file_dir"ukb22828_c22_b0_v3.sample \
- 	--memory 16000 \
+	--memory 12000 \
 	--freq \
  	--make-bed \
  	--out "$output"raw
 
-# Marking ambigous SNPs from target data (I don't think step is relevant)
-awk '/^[^#]/ { if( $5>0.4 && $5<0.6 && ( ($3=="A" && $4=="T") || ($4=="T" && $3=="A") || ($3=="C" && $4=="G") || ($4=="G" && $3=="C") ) ) { print $0 }}' "$output"raw.afreq > "$output"exclrsIDs_ambiguous.txt
+# # Marking ambigous SNPs from target data (I don't think step is relevant)
+# awk '/^[^#]/ { if( $5>0.4 && $5<0.6 && ( ($3=="A" && $4=="T") || ($4=="T" && $3=="A") || ($3=="C" && $4=="G") || ($4=="G" && $3=="C") ) ) { print $0 }}' "$output"raw.afreq > "$output"exclrsIDs_ambiguous.txt
 
 # Standard GWAS QC
 plink2 --bfile "$output"raw \
-  --memory 16000 \
 	--exclude "$output"exclrsIDs_ambiguous.txt \
+	--memory 12000 \
 	--extract-col-cond "$imp_file_dir"ukb_mfi_all_v3.nodup.tsv 9 3 --extract-col-cond-min 0.4 \
 	--maf 0.01 \
 	--hwe 1e-6 \
@@ -104,40 +104,41 @@ plink2 --bfile "$output"raw \
 # Pruning to remove highly correlated SNPs
 plink2 \
     --bfile "$output"raw \
-    --memory 16000 \
+	--memory 12000 \
     --keep "$output"raw.QC.fam \
     --extract "$output"raw.QC.snplist \
     --indep-pairwise 200 50 0.25 \
     --out "$output"raw.QC
 
-# Calculating heterozygosity
-plink2 \
-    --bfile "$output"raw \
-    --memory 16000 \
-    --extract "$output"raw.QC.prune.in \
-    --keep raw.QC.fam \
-    --het \
-    --out "$output"raw.QC
+# # # Calculating heterozygosity
+# # plink2 \
+# #     --bfile "$output"raw \
+# # 	--memory 12000 \
+# #     --extract "$output"raw.QC.prune.in \
+# #     --keep raw.QC.fam \
+# #     --het \
+# #     --out "$output"raw.QC
 
-# Remove '#' from the het file
-sed -i "s/#//1" "$output"raw.QC.het
+# # # Remove '#' from the het file
+# # sed -i "s/#//1" "$output"raw.QC.het
 
-# Alternative SampleQC
+# # Alternative SampleQC
 plink2 --bfile "$output"raw \
 	--extract "$output"raw.QC.snplist \
+	--memory 12000 \
 	--keep-fam "$imp_file_dir"usedinpca.txt \
 	--write-samples \
-	--out "$output"sampleQC
+	--out "$output"raw.QC
 
 # Calling R script to deal with mismatching SNPs
 Rscript ./mismatch.r "$base""$phenotype" "$output"
 
-# Generating final QC'ed target data file
+# # Generating final QC'ed target data file
 plink2 \
     --bfile "$output"raw \
+	--memory 15000 \
     --make-bed \
-    --memory 16000 \
-    --keep "$output"sampleQC.id \
+    --keep "$output"raw.QC.id \
     --out "$output"raw_QC \
     --extract "$output"raw.QC.snplist \
     --exclude "$output"raw.mismatch \
