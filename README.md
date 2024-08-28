@@ -120,7 +120,13 @@ bash calculate_prs.sh -b /path/to/base_PRScs_file -t path/to/target -r path/to/L
 
 -r Path to the LD Reference panel
 
+-p Phenotype abbreviation(e.g., SCZ for Schizophrenia)
+
+-n Total GWAS participants
+
 -o Output directory folder
 
 The script will generate the .score files for each phi parameter used to compute the PGS.
+
+<code style="color : red">**At this point only using auto to calculate the score**</code>
 
