@@ -74,7 +74,7 @@ The pipeline is implemented in 3 steps/scripts:-
 
 Command-
 ```bash
-SNP_QC.sh -i /path/to/base_summary_statistics -o /path/to/output
+bash SNP_QC.sh -i /path/to/base_summary_statistics -o /path/to/output
 ```
 -i Input file with the path to the directory
 
