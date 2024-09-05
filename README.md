@@ -112,7 +112,7 @@ The script utilizes the PRS-CS repository and plink to generate the PGS. The scr
 
 Command-
 ```bash
-bash calculate_prs.sh -b /path/to/base_PRScs_file -t path/to/target -r path/to/LD_reference -o path/to/output_dir
+bash calculate_prs.sh -b /path/to/base_PRScs_file -t path/to/target -p phenotype_abbreviation -n no_of_participants_in_base_GWAS -r path/to/LD_reference -o path/to/output_dir
 ```
 -b Path to the PRS-CS prepared base summary statistics file
 
@@ -122,7 +122,7 @@ bash calculate_prs.sh -b /path/to/base_PRScs_file -t path/to/target -r path/to/L
 
 -p Phenotype abbreviation(e.g., SCZ for Schizophrenia)
 
--n Total GWAS participants
+-n Total base GWAS participants
 
 -o Output directory folder
 
